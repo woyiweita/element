@@ -50,7 +50,6 @@
         :autocomplete="autoComplete || autocomplete"
         @focus="handleFocus"
         @blur="softFocus = false"
-        @click.stop
         @keyup="managePlaceholder"
         @keydown="resetInputState"
         @keydown.down.prevent="navigateOptions('next')"
@@ -58,6 +57,7 @@
         @keydown.enter.prevent="selectOption"
         @keydown.esc.stop.prevent="visible = false"
         @keydown.delete="deletePrevTag"
+        @keydown.tab="visible = false"
         @compositionstart="handleComposition"
         @compositionupdate="handleComposition"
         @compositionend="handleComposition"
@@ -80,6 +80,7 @@
       :readonly="readonly"
       :validate-event="false"
       :class="{ 'is-focus': visible }"
+      :tabindex="(multiple && filterable) ? '-1' : null"
       @focus="handleFocus"
       @blur="handleBlur"
       @keyup.native="debouncedOnInputChange"
@@ -144,7 +145,6 @@
   import debounce from 'throttle-debounce/debounce';
   import Clickoutside from 'element-ui/src/utils/clickoutside';
   import { addResizeListener, removeResizeListener } from 'element-ui/src/utils/resize-event';
-  import { t } from 'element-ui/src/locale';
   import scrollIntoView from 'element-ui/src/utils/scroll-into-view';
   import { getValueByPath, valueEquals, isIE, isEdge } from 'element-ui/src/utils/util';
   import NavigationMixin from './navigation-mixin';
@@ -234,6 +234,9 @@
         return ['small', 'mini'].indexOf(this.selectSize) > -1
           ? 'mini'
           : 'small';
+      },
+      propPlaceholder() {
+        return typeof this.placeholder !== 'undefined' ? this.placeholder : this.t('el.select.placeholder');
       }
     },
 
@@ -287,9 +290,7 @@
       },
       placeholder: {
         type: String,
-        default() {
-          return t('el.select.placeholder');
-        }
+        required: false
       },
       defaultFirstOption: Boolean,
       reserveKeyword: Boolean,
@@ -338,7 +339,7 @@
         });
       },
 
-      placeholder(val) {
+      propPlaceholder(val) {
         this.cachedPlaceHolder = this.currentPlaceholder = val;
       },
 
@@ -525,7 +526,7 @@
         }
         if (option) return option;
         const label = (!isObject && !isNull && !isUndefined)
-          ? value : '';
+          ? String(value) : '';
         let newOption = {
           value: value,
           currentLabel: label
@@ -566,7 +567,9 @@
         if (!this.softFocus) {
           if (this.automaticDropdown || this.filterable) {
             this.visible = true;
-            this.menuVisibleOnFocus = true;
+            if (this.filterable) {
+              this.menuVisibleOnFocus = true;
+            }
           }
           this.$emit('focus', event);
         } else {
@@ -835,7 +838,7 @@
     },
 
     created() {
-      this.cachedPlaceHolder = this.currentPlaceholder = this.placeholder;
+      this.cachedPlaceHolder = this.currentPlaceholder = this.propPlaceholder;
       if (this.multiple && !Array.isArray(this.value)) {
         this.$emit('input', []);
       }
